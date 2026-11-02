@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#020617" />
+<title>Tesla Charging Tracker</title>
+<style>
+  :root {
+    --bg: #020617;          /* slate-950 */
+    --panel: #0f172a;       /* slate-900 */
+    --panel-2: #1e293b;     /* slate-800 */
+    --border: #1e293b;
+    --border-strong: #334155;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --faint: #64748b;
+    --accent: #dc2626;
+    --accent-hover: #ef4444;
+    --radius: 16px;
+    --c-ac: #34d399;
+    --c-dc: #38bdf8;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---------- Header / month navigation ---------- */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(15, 23, 42, .85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; background: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 18px; }
+  .brand h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  .brand p { margin: 0; font-size: 12px; color: var(--muted); }
+  .month-nav { display: flex; align-items: center; gap: 8px; }
+  .month-label { min-width: 160px; text-align: center; padding: 10px 14px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border-strong); font-weight: 600; font-size: 14px; }
+  .icon-btn {
+    min-width: 44px; min-height: 44px; border-radius: 12px; cursor: pointer;
+    background: var(--panel-2); border: 1px solid var(--border-strong); color: var(--muted);
+    font-size: 20px; font-weight: 600; transition: background .15s, color .15s;
+  }
+  .icon-btn:hover { background: var(--border-strong); color: var(--text); }
+
+  main.wrap { padding-top: 24px; padding-bottom: 40px; display: grid; gap: 24px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  h2 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+  h2 small { color: var(--faint); font-weight: 400; font-size: 13px; }
+
+  /* ---------- Form ---------- */
+  .form-head { display: flex; align-items: center; justify-content: space-between; }
+  .form-grid { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); }
+  .field label { display: block; margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .field label span { text-transform: none; letter-spacing: 0; color: var(--faint); }
+  .field input, .field select {
+    width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 12px;
+    background: var(--bg); border: 1px solid var(--border-strong); font-size: 16px; /* 16px stops iOS zoom on focus */
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(220, 38, 38, .25); }
+  .span-2 { grid-column: span 2; }
+  .segmented { display: flex; gap: 8px; }
+  .segmented label {
+    flex: 1; margin: 0; min-height: 44px; display: grid; place-items: center; cursor: pointer;
+    border-radius: 12px; background: var(--bg); border: 1px solid var(--border-strong);
+    font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted);
+  }
+  .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+  .segmented input:checked + span { color: #fff; }
+  .segmented label:has(input:checked) { background: var(--accent); border-color: var(--accent); }
+  .segmented label:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(220, 38, 38, .35); }
+  #operator-new { margin-top: 8px; }
+  .actions { display: flex; align-items: flex-end; gap: 8px; }
+  .btn {
+    min-height: 44px; padding: 10px 16px; border-radius: 12px; border: 1px solid transparent; cursor: pointer;
+    font-weight: 600; font-size: 14px; transition: background .15s, border-color .15s, color .15s;
+  }
+  .btn-primary { width: 100%; background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; color: var(--muted); }
+  .btn-ghost:hover { color: var(--text); }
+
+  /* ---------- Summary ---------- */
+  .summary { display: grid; gap: 16px; grid-template-columns: 2fr 1fr; }
+  .stats { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+  .stat { transition: border-color .15s; }
+  .stat:hover, .chart-card:hover { border-color: var(--border-strong); }
+  .stat p { margin: 0; }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 4px; }
+  .stat .value { font-size: 30px; font-weight: 600; }
+  .stat .unit { font-size: 15px; font-weight: 400; color: var(--faint); margin-left: 4px; }
+  .chart-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+  .chart-body { display: flex; align-items: center; gap: 16px; min-height: 140px; }
+  .chart-body svg { width: 130px; height: 130px; flex: none; transform: rotate(-90deg); }
+  .legend { list-style: none; margin: 0; padding: 0; font-size: 13px; display: grid; gap: 6px; }
+  .legend li { color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .legend b { color: var(--text); font-weight: 500; white-space: nowrap; }
+  .chart-empty { color: var(--faint); font-size: 14px; margin: auto; }
+
+  /* ---------- Session list ---------- */
+  .list { padding: 0; overflow: hidden; }
+  .list-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .list-head h2 { margin: 0; }
+  .list-head span { font-size: 13px; color: var(--muted); }
+  .toolbar { display: flex; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .search { flex: 1; min-width: 200px; }
+  .search input {
+    width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 12px; font-size: 16px;
+    background: var(--bg); border: 1px solid var(--border-strong);
+  }
+  .search input:focus { outline: none; border-color: var(--accent); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn { min-height: 44px; padding: 8px 14px; border-radius: 12px; cursor: pointer; font-size: 13px; font-weight: 500; background: var(--bg); border: 1px solid var(--border-strong); color: var(--muted); }
+  .filter-btn:hover { color: var(--text); border-color: var(--faint); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); font-weight: 500; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 20px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: rgba(30, 41, 59, .4); }
+  tr.editing { background: rgba(220, 38, 38, .08); }
+  .num { text-align: right; }
+  .loc { color: var(--muted); white-space: normal; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+  .row-actions { text-align: right; }
+  .row-actions button { min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; }
+  .row-actions button:hover { color: var(--text); }
+  .row-actions button.del:hover { color: var(--accent-hover); }
+  .empty { padding: 40px 20px; text-align: center; color: var(--faint); font-size: 14px; margin: 0; }
+  .notice { background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .4); color: #fcd34d; border-radius: 12px; padding: 10px 14px; font-size: 13px; }
+  .notice-error { background: rgba(239, 68, 68, .1); border-color: rgba(239, 68, 68, .45); color: #fca5a5; }
+  .btn:disabled { opacity: .6; cursor: progress; }
+  .source { margin: 0 0 32px; text-align: center; font-size: 12px; color: var(--faint); }
+  [hidden] { display: none !important; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 900px) {
+    .form-grid { grid-template-columns: repeat(2, 1fr); }
+    .summary { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .header-row { justify-content: center; }
+    .month-nav { width: 100%; }
+    .month-label { flex: 1; }
+    .form-grid, .stats { grid-template-columns: 1fr; }
+    .span-2 { grid-column: auto; }
+    /* Table rows become stacked cards on phones */
+    thead { display: none; }
+    table, tbody, tr, td { display: block; }
+    tr { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    td { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border: 0; text-align: right; white-space: normal; }
+    td::before { content: attr(data-label); color: var(--faint); font-size: 13px; text-align: left; }
+    td.row-actions { justify-content: flex-end; }
+    td.row-actions::before { content: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap header-row">
+    <div class="brand">
+      <div class="logo">T</div>
+      <div>
+        <h1>Tesla Charging Tracker</h1>
+        <p>Energy, cost &amp; sessions at a glance</p>
+      </div>
+    </div>
+    <div class="month-nav">
+      <button class="icon-btn" id="prev-month" aria-label="Previous month">&lsaquo;</button>
+      <div class="month-label" id="month-label"></div>
+      <button class="icon-btn" id="next-month" aria-label="Next month">&rsaquo;</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="notice" id="storage-notice" hidden>
+    This browser does not allow saving data here. Your sessions will be lost when you close the page.
+  </p>
+  <p class="notice notice-error" id="app-message" role="alert" hidden></p>
+
+  <!-- ===================== ENTRY FORM ===================== -->
+  <section class="card">
+    <div class="form-head">
+      <h2 id="form-title">Add Charging Session</h2>
+      <button type="button" class="btn btn-ghost" id="cancel-edit" hidden>&#10005; Cancel editing</button>
+    </div>
+    <form id="session-form" class="form-grid" novalidate>
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date" required />
+      </div>
+      <div class="field">
+        <label for="kwh">Total kWh</label>
+        <input type="text" id="kwh" inputmode="decimal" pattern="\d+([.,]\d+)?" title="A number like 5.10 or 5,10" placeholder="e.g. 42.5" autocomplete="off" required />
+      </div>
+      <div class="field">
+        <label for="price">Price (€)</label>
+        <input type="text" id="price" inputmode="decimal" pattern="\d+([.,]\d+)?" title="A number like 12.40 or 12,40" placeholder="e.g. 12.40" autocomplete="off" required />
+      </div>
+      <div class="field">
+        <label for="time">Charging Time (min.)</label>
+        <input type="number" id="time" min="0" step="1" inputmode="numeric" placeholder="e.g. 35" required />
+      </div>
+      <div class="field">
+        <label for="percent">Ending Percentage (%)</label>
+        <input type="number" id="percent" min="0" max="100" step="1" inputmode="numeric" placeholder="e.g. 80" required />
+      </div>
+      <div class="field">
+        <label for="odometer">Car Odometer (km)</label>
+        <input type="number" id="odometer" min="0" step="1" inputmode="numeric" placeholder="e.g. 24500" required />
+      </div>
+      <div class="field">
+        <label for="operator">Operator</label>
+        <select id="operator" required></select>
+        <input type="text" id="operator-new" maxlength="40" placeholder="New operator name" hidden />
+      </div>
+      <div class="field">
+        <label id="type-label">Charging Type</label>
+        <div class="segmented" role="radiogroup" aria-labelledby="type-label">
+          <label><input type="radio" name="type" value="AC" required /><span>AC</span></label>
+          <label><input type="radio" name="type" value="DC" /><span>DC</span></label>
+        </div>
+      </div>
+      <div class="actions" style="grid-column: -2 / -1;">
+        <button type="submit" class="btn btn-primary" id="submit-btn">+ Add Session</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===================== SUMMARY (selected month) ===================== -->
+  <section>
+    <h2>Summary <small id="summary-month"></small></h2>
+    <div class="summary">
+      <div class="stats">
+        <div class="card stat">
+          <p class="label">Total Energy</p>
+          <p class="value"><span id="stat-kwh">0</span><span class="unit">kWh</span></p>
+        </div>
+        <div class="card stat">
+          <p class="label">Total Spent</p>
+          <p class="value">€<span id="stat-cost">0.00</span></p>
+        </div>
+        <div class="card stat">
+          <p class="label">Total Sessions</p>
+          <p class="value" id="stat-count">0</p>
+        </div>
+      </div>
+      <div class="card chart-card">
+        <p class="label">Energy by Charging Type</p>
+        <div class="chart-body" id="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SESSION LIST ===================== -->
+  <section class="card list">
+    <div class="list-head">
+      <h2>Charging Sessions</h2>
+      <span id="list-count"></span>
+    </div>
+    <div class="toolbar">
+      <div class="search">
+        <input type="search" id="search" placeholder="Search by operator or date…" aria-label="Search sessions" />
+      </div>
+      <div class="filters" id="filters">
+        <button class="filter-btn" data-filter="All">All</button>
+        <button class="filter-btn" data-filter="AC">AC</button>
+        <button class="filter-btn" data-filter="DC">DC</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Operator</th>
+          <th>Type</th>
+          <th class="num">kWh</th>
+          <th class="num">Price (€)</th>
+          <th class="num">€/kWh</th>
+          <th class="num">Time (min)</th>
+          <th class="num">End %</th>
+          <th class="num">Odometer (km)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="empty" id="empty-month" hidden>No charging sessions in this month — add one above.</p>
+    <p class="empty" id="empty-filter" hidden>No sessions match your search or filter.</p>
+  </section>
+</main>
+<p class="source" id="data-source"></p>
+
+<script>
+  const STORAGE_KEY = 'teslaChargingTracker.v2.sessions';
+  const TYPES = {
+    AC: { color: 'var(--c-ac)', badge: 'rgba(52, 211, 153, .15)' },
+    DC: { color: 'var(--c-dc)', badge: 'rgba(56, 189, 248, .15)' }
+  };
+  // Operators from the Google Sheet, most used first. Spelling here is the one that gets saved.
+  const DEFAULT_OPERATORS = [
+    'GigaCharger', 'EvPoint', 'Fines', 'Tesla Supercharger', 'ElDrive', 'OMV',
+    'Electrip', 'Kaufland - Varna', 'KIA Hypercharge', 'Electrocharge', 'EVN'
+  ];
+  const NEW_OPERATOR = '__new__';
+
+  // ---------- Dates (always local time, never UTC) ----------
+  function toISO(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function parseISO(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function formatDate(iso) {
+    return parseISO(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function formatDateNumeric(iso) {          // 02.11.2026, so searching the way you write dates works
+    const [y, m, d] = iso.split('-');
+    return `${d}.${m}.${y}`;
+  }
+  function monthName(y, m) {
+    return new Date(y, m, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+
+  // ---------- Sample data: all in the current month, only used on first run ----------
+  function buildSamples() {
+    const today = new Date();
+    const dayInMonth = offset => {
+      const d = new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - offset));
+      return toISO(d);
+    };
+    return [
+      { id: 1, date: dayInMonth(9), operator: 'Fines',              type: 'DC', kwh: 44.41, price: 17.32, time: 29,  percent: 77, odometer: 22980 },
+      { id: 2, date: dayInMonth(6), operator: 'EvPoint',            type: 'AC', kwh: 30.18, price: 8.69,  time: 285, percent: 61, odometer: 23410 },
+      { id: 3, date: dayInMonth(3), operator: 'GigaCharger',        type: 'AC', kwh: 26.18, price: 5.24,  time: 660, percent: 61, odometer: 23805 },
+      { id: 4, date: dayInMonth(0), operator: 'Tesla Supercharger', type: 'DC', kwh: 46.99, price: 8.94,  time: 26,  percent: 86, odometer: 24120 }
+    ];
+  }
+
+  // ---------- Google Sheet backend (when the page is served by Apps Script) ----------
+  const useSheet = typeof google !== 'undefined' && google.script && google.script.run;
+
+  function callSheet(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error(err && err.message ? err.message : String(err))))[fn](...args);
+    });
+  }
+
+  function showMessage(text) {
+    const el = document.getElementById('app-message');
+    el.textContent = text || '';
+    el.hidden = !text;
+  }
+
+  // ---------- Local persistence (works even when the browser blocks storage) ----------
+  let storageOk = true;
+
+  function isValidSession(s) {
+    return s && typeof s.id === 'number' && /^\d{4}-\d{2}-\d{2}$/.test(s.date) && s.type in TYPES &&
+      typeof s.operator === 'string' && s.operator.trim() !== '' &&
+      ['kwh', 'price', 'time', 'odometer'].every(k => Number.isFinite(s[k])) &&
+      (s.percent === null || Number.isFinite(s.percent));   // older sheet rows have no percentage
+  }
+
+  function loadSessions() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw !== null) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter(isValidSession);
+      }
+    } catch (e) {
+      storageOk = false;
+    }
+    return buildSamples();
+  }
+
+  function saveSessions() {
+    if (useSheet) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+      storageOk = true;
+    } catch (e) {
+      storageOk = false;
+    }
+    document.getElementById('storage-notice').hidden = storageOk;
+  }
+
+  // ---------- State ----------
+  let sessions = useSheet ? [] : loadSessions();
+  let busy = false;
+  let editingId = null;
+  let editingOriginal = null;   // the session as it was when Edit was pressed, sent to the sheet as a check
+  let searchQuery = '';
+  let activeFilter = 'All';
+  const now = new Date();
+  let viewYear = now.getFullYear();
+  let viewMonth = now.getMonth();   // 0-based
+
+  const fmtMoney = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtInt = new Intl.NumberFormat('en-GB');
+  const fmtKwh = n => (Math.round(n * 10) / 10).toFixed(1);
+  const pricePerKwh = s => s.kwh > 0 ? (s.price / s.kwh).toFixed(2) : '—';   // same as ROUND(E/D, 2) in the sheet
+
+  // ---------- Operators ----------
+  // Defaults plus any operator already used, so a newly added one appears in the list next time
+  function operatorList() {
+    const list = [...DEFAULT_OPERATORS];
+    sessions.forEach(s => {
+      if (!list.some(o => o.toLowerCase() === s.operator.toLowerCase())) list.push(s.operator);
+    });
+    return list;
+  }
+
+  // Reuse the existing spelling when a typed name only differs in case (EVPoint -> EvPoint)
+  function normalizeOperator(name) {
+    const clean = name.trim().replace(/\s+/g, ' ');
+    return operatorList().find(o => o.toLowerCase() === clean.toLowerCase()) || clean;
+  }
+
+  function renderOperatorOptions(selected) {
+    const select = document.getElementById('operator');
+    select.innerHTML = operatorList()
+      .map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('') +
+      `<option value="${NEW_OPERATOR}">+ New operator…</option>`;
+    select.value = selected || DEFAULT_OPERATORS[0];
+    toggleNewOperator();
+  }
+
+  function toggleNewOperator() {
+    const isNew = document.getElementById('operator').value === NEW_OPERATOR;
+    const input = document.getElementById('operator-new');
+    input.hidden = !isNew;
+    input.required = isNew;
+    if (!isNew) input.value = '';
+  }
+
+  // Preselect AC/DC from the last session with this operator
+  function lastTypeFor(operator) {
+    const last = sessions.filter(s => s.operator === operator).sort((a, b) => b.date.localeCompare(a.date))[0];
+    return last ? last.type : null;
+  }
+
+  function setType(type) {
+    document.querySelectorAll('input[name="type"]').forEach(r => { r.checked = r.value === type; });
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- Selected month + filters ----------
+  function sessionsInMonth() {
+    const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
+    return sessions.filter(s => s.date.startsWith(prefix));
+  }
+
+  function visibleSessions(monthSessions) {
+    const q = searchQuery.trim().toLowerCase();
+    return monthSessions
+      .filter(s => activeFilter === 'All' || s.type === activeFilter)
+      .filter(s => !q || [s.operator, s.type, s.date, formatDate(s.date), formatDateNumeric(s.date)]
+        .some(v => String(v || '').toLowerCase().includes(q)))
+      .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  }
+
+  // ---------- Rendering ----------
+  function renderStats(monthSessions) {
+    const kwh = monthSessions.reduce((sum, s) => sum + s.kwh, 0);
+    const cost = monthSessions.reduce((sum, s) => sum + s.price, 0);
+    document.getElementById('stat-kwh').textContent = fmtKwh(kwh);
+    document.getElementById('stat-cost').textContent = fmtMoney.format(cost);
+    document.getElementById('stat-count').textContent = monthSessions.length;
+  }
+
+  // Pie chart drawn as SVG circle segments, so the app needs no internet connection
+  function renderChart(monthSessions) {
+    const totals = {};
+    monthSessions.forEach(s => { totals[s.type] = (totals[s.type] || 0) + s.kwh; });
+    const sum = Object.values(totals).reduce((a, b) => a + b, 0);
+    const el = document.getElementById('chart');
+
+    if (sum <= 0) {
+      el.innerHTML = '<p class="chart-empty">No data this month</p>';
+      return;
+    }
+
+    const R = 15.915;   // circumference ≈ 100, so dash lengths are percentages
+    let offset = 0;
+    let segments = '';
+    let legend = '';
+    Object.keys(TYPES).filter(t => totals[t] > 0).forEach(type => {
+      const pct = totals[type] / sum * 100;
+      segments += `<circle r="${R}" cx="21" cy="21" fill="none" stroke="${TYPES[type].color}" stroke-width="10"
+        stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${-offset}"></circle>`;
+      offset += pct;
+      legend += `<li><i style="background:${TYPES[type].color}"></i>${type}: <b>${fmtKwh(totals[type])} kWh</b> (${Math.round(pct)}%)</li>`;
+    });
+    el.innerHTML = `<svg viewBox="0 0 42 42" role="img" aria-label="Energy by charging type">${segments}</svg><ul class="legend">${legend}</ul>`;
+  }
+
+  function renderTable(monthSessions) {
+    const visible = visibleSessions(monthSessions);
+    document.getElementById('rows').innerHTML = visible.map(s => `
+      <tr class="${s.id === editingId ? 'editing' : ''}">
+        <td data-label="Date">${formatDate(s.date)}</td>
+        <td data-label="Operator" class="loc">${escapeHtml(s.operator)}</td>
+        <td data-label="Type"><span class="badge" style="background:${TYPES[s.type].badge};color:${TYPES[s.type].color}">${s.type}</span></td>
+        <td data-label="kWh" class="num">${s.kwh.toFixed(2)}</td>
+        <td data-label="Price (€)" class="num">${fmtMoney.format(s.price)}</td>
+        <td data-label="€/kWh" class="num">${pricePerKwh(s)}</td>
+        <td data-label="Time (min)" class="num">${s.time}</td>
+        <td data-label="End %" class="num">${s.percent === null ? '—' : s.percent + '%'}</td>
+        <td data-label="Odometer (km)" class="num">${fmtInt.format(s.odometer)}</td>
+        <td class="row-actions">
+          <button data-action="edit" data-id="${s.id}">Edit</button>
+          <button data-action="delete" data-id="${s.id}" class="del">Delete</button>
+        </td>
+      </tr>`).join('');
+
+    document.getElementById('empty-month').hidden = monthSessions.length > 0;
+    document.getElementById('empty-filter').hidden = monthSessions.length === 0 || visible.length > 0;
+    const n = monthSessions.length;
+    document.getElementById('list-count').textContent = visible.length === n
+      ? `${n} session${n === 1 ? '' : 's'} this month`
+      : `Showing ${visible.length} of ${n} this month`;
+
+    document.querySelectorAll('.filter-btn').forEach(btn =>
+      btn.classList.toggle('active', btn.dataset.filter === activeFilter));
+  }
+
+  function render() {
+    const label = monthName(viewYear, viewMonth);
+    document.getElementById('month-label').textContent = label;
+    document.getElementById('summary-month').textContent = '— ' + label;
+    const monthSessions = sessionsInMonth();
+    renderStats(monthSessions);
+    renderChart(monthSessions);
+    renderTable(monthSessions);
+  }
+
+  // ---------- Form: add / edit ----------
+  const form = document.getElementById('session-form');
+  const fields = ['date', 'kwh', 'price', 'time', 'percent', 'odometer'];
+  const $ = id => document.getElementById(id);
+
+  function resetForm() {
+    form.reset();
+    $('date').value = toISO(new Date());
+    renderOperatorOptions();
+    setType(lastTypeFor($('operator').value));
+  }
+
+  function startEdit(id) {
+    const s = sessions.find(x => x.id === id);
+    if (!s) return;
+    editingId = id;
+    editingOriginal = { ...s };
+    fields.forEach(f => { $(f).value = s[f] ?? ''; });
+    ['kwh', 'price'].forEach(f => { $(f).value = round2(s[f]); });
+    renderOperatorOptions(s.operator);
+    setType(s.type);
+    $('form-title').textContent = 'Edit Charging Session';
+    $('submit-btn').textContent = 'Save Changes';
+    $('cancel-edit').hidden = false;
+    render();
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function stopEdit() {
+    editingId = null;
+    editingOriginal = null;
+    resetForm();
+    $('form-title').textContent = 'Add Charging Session';
+    $('submit-btn').textContent = '+ Add Session';
+    $('cancel-edit').hidden = true;
+    render();
+  }
+
+  // Round half up to 2 decimals: 23.457 -> 23.46, 24.454 -> 24.45.
+  // Shifting via the exponent avoids float errors such as 1.005 -> 1.00.
+  const round2 = n => Number(Math.round(Number(n + 'e2')) + 'e-2');
+
+  // iPhones with Bulgarian settings only offer a comma on the number keypad, so accept both
+  const parseDecimal = v => round2(parseFloat(String(v).trim().replace(',', '.')));
+
+  // When leaving the field, show the rounded value, keeping the separator that was typed
+  ['kwh', 'price'].forEach(id => {
+    $(id).addEventListener('change', () => {
+      const el = $(id);
+      const raw = el.value.trim();
+      if (!/^\d+[.,]\d{3,}$/.test(raw)) return;
+      const rounded = parseDecimal(raw).toFixed(2);
+      el.value = raw.includes(',') ? rounded.replace('.', ',') : rounded;
+    });
+  });
+
+  function setBusy(on, label) {
+    busy = on;
+    $('submit-btn').disabled = on;
+    if (on) $('submit-btn').textContent = label;
+    document.querySelectorAll('.row-actions button').forEach(b => { b.disabled = on; });
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (busy || !form.reportValidity()) return;
+
+    const operator = $('operator').value === NEW_OPERATOR
+      ? normalizeOperator($('operator-new').value)
+      : $('operator').value;
+    const entry = {
+      date: $('date').value,
+      operator,
+      type: form.querySelector('input[name="type"]:checked').value,
+      kwh: parseDecimal($('kwh').value),
+      price: parseDecimal($('price').value),
+      time: parseInt($('time').value, 10),
+      percent: parseInt($('percent').value, 10),
+      odometer: parseInt($('odometer').value, 10)
+    };
+
+    if (useSheet) {
+      const original = editingId !== null ? editingOriginal : null;
+      const label = $('submit-btn').textContent;
+      setBusy(true, 'Saving to Google Sheet…');
+      try {
+        sessions = (original
+          ? await callSheet('updateSession', original, entry)
+          : await callSheet('addSession', entry)).filter(isValidSession);
+        showMessage('');
+      } catch (err) {
+        // Keep everything typed in the form so nothing is lost
+        showMessage('Not saved: ' + err.message);
+        setBusy(false);
+        $('submit-btn').textContent = label;
+        return;
+      }
+      setBusy(false);
+    } else if (editingId !== null) {
+      sessions = sessions.map(s => s.id === editingId ? { id: editingId, ...entry } : s);
+    } else {
+      const nextId = sessions.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+      sessions.push({ id: nextId, ...entry });
+    }
+
+    // Jump to the entry's month so the change is visible
+    const d = parseISO(entry.date);
+    viewYear = d.getFullYear();
+    viewMonth = d.getMonth();
+
+    saveSessions();
+    stopEdit();
+  });
+
+  $('cancel-edit').addEventListener('click', stopEdit);
+
+  $('operator').addEventListener('change', () => {
+    toggleNewOperator();
+    if ($('operator').value === NEW_OPERATOR) $('operator-new').focus();
+    else if (editingId === null) setType(lastTypeFor($('operator').value));
+  });
+
+  async function deleteSession(id) {
+    const s = sessions.find(x => x.id === id);
+    if (!s || busy) return;
+    if (!confirm(`Delete this charging session?\n\n${formatDate(s.date)} — ${s.operator} ${s.type}, ${fmtKwh(s.kwh)} kWh`)) return;
+    if (useSheet) {
+      const label = $('submit-btn').textContent;
+      setBusy(true, 'Deleting…');
+      try {
+        sessions = (await callSheet('deleteSession', s)).filter(isValidSession);
+        showMessage('');
+      } catch (err) {
+        showMessage('Not deleted: ' + err.message);
+      }
+      setBusy(false);
+      $('submit-btn').textContent = label;
+    } else {
+      sessions = sessions.filter(x => x.id !== id);
+    }
+    saveSessions();
+    // In the sheet, deleting a row moves every row below it up, so an edit in progress
+    // would point at the wrong row. Leave edit mode instead.
+    if (editingId === id || (useSheet && editingId !== null)) stopEdit(); else render();
+  }
+
+  // ---------- Other events ----------
+  $('rows').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    if (btn.dataset.action === 'edit') startEdit(id);
+    else deleteSession(id);
+  });
+
+  $('search').addEventListener('input', e => {
+    searchQuery = e.target.value;
+    renderTable(sessionsInMonth());
+  });
+
+  $('filters').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    activeFilter = btn.dataset.filter;
+    renderTable(sessionsInMonth());
+  });
+
+  function shiftMonth(delta) {
+    const d = new Date(viewYear, viewMonth + delta, 1);
+    viewYear = d.getFullYear();
+    viewMonth = d.getMonth();
+    render();
+  }
+  $('prev-month').addEventListener('click', () => shiftMonth(-1));
+  $('next-month').addEventListener('click', () => shiftMonth(1));
+
+  // ---------- Init ----------
+  async function init() {
+    if (useSheet) {
+      $('data-source').textContent = 'Data is saved in your Google Sheet';
+      setBusy(true, 'Loading from Google Sheet…');
+      render();
+      try {
+        sessions = (await callSheet('getSessions')).filter(isValidSession);
+        showMessage('');
+      } catch (err) {
+        showMessage('Could not load the Google Sheet: ' + err.message + ' Reload the page to try again.');
+      }
+      setBusy(false);
+      resetForm();
+      render();
+    } else {
+      $('data-source').textContent = 'Local mode — data is saved only in this browser';
+      resetForm();
+      saveSessions();   // stores the samples on first run and shows the warning if storage is blocked
+      render();
+    }
+  }
+  init();
+</script>
+</body>
+</html>

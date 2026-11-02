@@ -1,0 +1,7 @@
+# Windows shortcuts point to paths on one machine only
+*.lnk
+
+# OS clutter
+Thumbs.db
+desktop.ini
+.DS_Store
