@@ -4,7 +4,7 @@
 
 Файлове, които ще ти трябват (в тази папка):
 - `apps-script/Code.gs`: частта, която чете и пише в таблицата
-- `index.html`: самото приложение
+- `dist/Index.html`: самото приложение, сглобено в един файл от `src/` с `build.ps1`
 
 ## 1. Отвори Apps Script
 
@@ -16,7 +16,7 @@
 
 1. Отляво има файл **Code.gs**. Изтрий всичко в него и постави цялото съдържание на `apps-script/Code.gs`.
 2. До „Files“ натисни **+** → **HTML**. Кръсти файла точно **Index**, с главно I и без `.html` накрая.
-3. Изтрий всичко в него и постави цялото съдържание на `index.html`.
+3. Изтрий всичко в него и постави цялото съдържание на `dist/Index.html`.
 4. Натисни **Ctrl+S** (Save).
 
 ## 3. Публикувай като уеб приложение
@@ -53,7 +53,13 @@
 
 ## Когато има промени по приложението
 
-Смени кода в Apps Script, запази го, после **Deploy → Manage deployments** → ✏️ → **Version: New version** → **Deploy**. Линкът остава същият.
+1. Промените се правят в `src/` (`index.html`, `style.css`, `media.css`, `script.js`).
+2. Пусни сглобяването от папката на проекта:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\build.ps1
+   ```
+3. Постави новия `dist/Index.html` в **Index.html** в Apps Script и запази.
+4. **Deploy → Manage deployments** → ✏️ → **Version: New version** → **Deploy**. Линкът остава същият.
 
 ## Ако не се отваря
 

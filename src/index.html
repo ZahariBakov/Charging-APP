@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#020617" />
+<title>Tesla Charging Tracker</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="media.css" />
+</head>
+<body>
+
+<header>
+  <div class="wrap header-row">
+    <div class="brand">
+      <div class="logo">T</div>
+      <div>
+        <h1>Tesla Charging Tracker</h1>
+        <p>Energy, cost &amp; sessions at a glance</p>
+      </div>
+    </div>
+    <div class="month-nav">
+      <button class="icon-btn" id="prev-month" aria-label="Previous month">&lsaquo;</button>
+      <div class="month-label" id="month-label"></div>
+      <button class="icon-btn" id="next-month" aria-label="Next month">&rsaquo;</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="notice" id="storage-notice" hidden>
+    This browser does not allow saving data here. Your sessions will be lost when you close the page.
+  </p>
+  <p class="notice notice-error" id="app-message" role="alert" hidden></p>
+
+  <!-- ===================== ENTRY FORM ===================== -->
+  <section class="card">
+    <div class="form-head">
+      <h2 id="form-title">Add Charging Session</h2>
+      <button type="button" class="btn btn-ghost" id="cancel-edit" hidden>&#10005; Cancel editing</button>
+    </div>
+    <form id="session-form" class="form-grid" novalidate>
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date" required />
+      </div>
+      <div class="field">
+        <label for="kwh">Total kWh</label>
+        <input type="text" id="kwh" inputmode="decimal" pattern="\d+([.,]\d+)?" title="A number like 5.10 or 5,10" placeholder="e.g. 42.5" autocomplete="off" required />
+      </div>
+      <div class="field">
+        <label for="price">Price (€)</label>
+        <input type="text" id="price" inputmode="decimal" pattern="\d+([.,]\d+)?" title="A number like 12.40 or 12,40" placeholder="e.g. 12.40" autocomplete="off" required />
+      </div>
+      <div class="field">
+        <label for="time">Charging Time (min.)</label>
+        <input type="number" id="time" min="0" step="1" inputmode="numeric" placeholder="e.g. 35" required />
+      </div>
+      <div class="field">
+        <label for="percent">Ending Percentage (%)</label>
+        <input type="number" id="percent" min="0" max="100" step="1" inputmode="numeric" placeholder="e.g. 80" required />
+      </div>
+      <div class="field">
+        <label for="odometer">Car Odometer (km)</label>
+        <input type="number" id="odometer" min="0" step="1" inputmode="numeric" placeholder="e.g. 24500" required />
+      </div>
+      <div class="field">
+        <label for="operator">Operator</label>
+        <select id="operator" required></select>
+        <input type="text" id="operator-new" maxlength="40" placeholder="New operator name" hidden />
+      </div>
+      <div class="field">
+        <label id="type-label">Charging Type</label>
+        <div class="segmented" role="radiogroup" aria-labelledby="type-label">
+          <label><input type="radio" name="type" value="AC" required /><span>AC</span></label>
+          <label><input type="radio" name="type" value="DC" /><span>DC</span></label>
+        </div>
+      </div>
+      <div class="actions" style="grid-column: -2 / -1;">
+        <button type="submit" class="btn btn-primary" id="submit-btn">+ Add Session</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===================== SUMMARY (selected month) ===================== -->
+  <section>
+    <h2>Summary <small id="summary-month"></small></h2>
+    <div class="summary">
+      <div class="stats">
+        <div class="card stat">
+          <p class="label">Total Energy</p>
+          <p class="value"><span id="stat-kwh">0</span><span class="unit">kWh</span></p>
+        </div>
+        <div class="card stat">
+          <p class="label">Total Spent</p>
+          <p class="value">€<span id="stat-cost">0.00</span></p>
+        </div>
+        <div class="card stat">
+          <p class="label">Total Sessions</p>
+          <p class="value" id="stat-count">0</p>
+        </div>
+      </div>
+      <div class="card chart-card">
+        <p class="label">Energy by Charging Type</p>
+        <div class="chart-body" id="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SESSION LIST ===================== -->
+  <section class="card list">
+    <div class="list-head">
+      <h2>Charging Sessions</h2>
+      <span id="list-count"></span>
+    </div>
+    <div class="toolbar">
+      <div class="search">
+        <input type="search" id="search" placeholder="Search by operator or date…" aria-label="Search sessions" />
+      </div>
+      <div class="filters" id="filters">
+        <button class="filter-btn" data-filter="All">All</button>
+        <button class="filter-btn" data-filter="AC">AC</button>
+        <button class="filter-btn" data-filter="DC">DC</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Operator</th>
+          <th>Type</th>
+          <th class="num">kWh</th>
+          <th class="num">Price (€)</th>
+          <th class="num">€/kWh</th>
+          <th class="num">Time (min)</th>
+          <th class="num">End %</th>
+          <th class="num">Odometer (km)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="empty" id="empty-month" hidden>No charging sessions in this month — add one above.</p>
+    <p class="empty" id="empty-filter" hidden>No sessions match your search or filter.</p>
+  </section>
+</main>
+<p class="source" id="data-source"></p>
+
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+/* Responsive layout: tablets and phones */
+@media (max-width: 900px) {
+  .form-grid { grid-template-columns: repeat(2, 1fr); }
+  .summary { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .header-row { justify-content: center; }
+  .month-nav { width: 100%; }
+  .month-label { flex: 1; }
+  .form-grid, .stats { grid-template-columns: 1fr; }
+  .span-2 { grid-column: auto; }
+  /* Table rows become stacked cards on phones */
+  thead { display: none; }
+  table, tbody, tr, td { display: block; }
+  tr { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  td { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border: 0; text-align: right; white-space: normal; }
+  td::before { content: attr(data-label); color: var(--faint); font-size: 13px; text-align: left; }
+  td.row-actions { justify-content: flex-end; }
+  td.row-actions::before { content: none; }
+}

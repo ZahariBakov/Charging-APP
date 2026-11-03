@@ -2,7 +2,7 @@
  * Tesla Charging Tracker — Google Apps Script backend.
  *
  * Paste this into Extensions → Apps Script of the charging spreadsheet (file "Code.gs"),
- * and paste index.html into an HTML file named "Index". Deploy as a Web app:
+ * and paste dist/Index.html into an HTML file named "Index". Deploy as a Web app:
  *   Execute as: Me   ·   Who has access: Only myself
  *
  * Sheet layout (one row per charging session, newest at the top):
