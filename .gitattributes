@@ -1,0 +1,6 @@
+# Keep text files with LF line endings on every computer, so build.ps1 and diffs
+# behave the same whether the project was cloned on Windows, macOS or Linux
+* text=auto eol=lf
+
+*.png binary
+*.ico binary

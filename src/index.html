@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="theme-color" content="#020617" />
-<title>EV Charging Tracker</title>
-<link rel="stylesheet" href="style.css" />
-<link rel="stylesheet" href="media.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#020617" />
+  <title>EV Charging Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="media.css" />
 </head>
 <body>
 
@@ -33,6 +33,7 @@
   <p class="notice" id="storage-notice" hidden>
     This browser does not allow saving data here. Your sessions will be lost when you close the page.
   </p>
+  <p class="notice" id="sheet-problems" role="status" hidden></p>
   <p class="notice notice-error" id="app-message" role="alert" hidden></p>
 
   <!-- ===================== ENTRY FORM ===================== -->
@@ -72,13 +73,13 @@
         <input type="text" id="operator-new" maxlength="40" placeholder="New operator name" hidden />
       </div>
       <div class="field">
-        <label id="type-label">Charging Type</label>
+        <span class="field-label" id="type-label">Charging Type</span>
         <div class="segmented" role="radiogroup" aria-labelledby="type-label">
           <label><input type="radio" name="type" value="AC" required /><span>AC</span></label>
           <label><input type="radio" name="type" value="DC" /><span>DC</span></label>
         </div>
       </div>
-      <div class="actions" style="grid-column: -2 / -1;">
+      <div class="actions">
         <button type="submit" class="btn btn-primary" id="submit-btn">+ Add Session</button>
       </div>
     </form>

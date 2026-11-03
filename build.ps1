@@ -9,8 +9,9 @@ $src = Join-Path $root 'src'
 $dist = Join-Path $root 'dist'
 $utf8 = New-Object Text.UTF8Encoding $false
 
+# Line endings are normalized to LF, so the output is the same on every computer
 function Read-Source($name) {
-  [IO.File]::ReadAllText((Join-Path $src $name), $utf8)
+  [IO.File]::ReadAllText((Join-Path $src $name), $utf8).Replace("`r`n", "`n")
 }
 
 function Indent($text) {
