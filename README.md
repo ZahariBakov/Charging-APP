@@ -6,6 +6,15 @@ Log your EV charging sessions from your phone right after charging, or from your
 - Your data stays in your own Google account. No servers, no subscriptions, nothing to install
 - Works with any EV, not only Tesla
 
+![The app on a computer](docs/screenshots/desktop.png)
+
+<p>
+  <img src="docs/screenshots/phone-form.png" alt="Adding a session on a phone" width="260">
+  <img src="docs/screenshots/phone-list.png" alt="Session list on a phone" width="260">
+</p>
+
+*Screenshots show sample data.*
+
 ## Features
 
 - Add, edit and delete sessions: date, operator, AC/DC, kWh, price, charging time, ending %, odometer
