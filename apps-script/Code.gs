@@ -6,8 +6,8 @@
  *   Execute as: Me   ·   Who has access: Only myself
  *
  * Sheet layout (one row per charging session, newest at the top):
- *   B Дата · C Оператор · D Енергия (kWh) · E Сума (EUR) · F Време (min)
- *   G Тип зареждане (AC/DC) · H Цена киловат (formula) · I Километраж · J Проценти
+ *   B Date · C Operator · D Energy (kWh) · E Price (EUR) · F Time (min)
+ *   G Type (AC/DC) · H Price per kWh (formula) · I Odometer · J Ending %
  * Row 3 is the header, row 4 is the empty anchor row the totals start from (SUM(D4:...)),
  * so new sessions are inserted at row 5 and every total below picks them up automatically.
  */

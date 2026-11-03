@@ -1,75 +1,154 @@
 # Tesla Charging Tracker
 
-A small web app for logging EV charging sessions — from the phone right after charging, or from the computer — straight into a Google Sheet.
+Log your EV charging sessions from your phone right after charging, or from your computer. Every session is saved straight into your own Google Sheet.
 
-- Plain HTML, CSS and JavaScript, no external libraries (works without a CDN)
-- Runs as a Google Apps Script web app: one private link for phone and desktop, data lives in your own Google Sheet
-- Also opens locally with a double click (data is then kept in the browser only)
+- One private link that works on the phone and on the computer
+- Your data stays in your own Google account. No servers, no subscriptions, nothing to install
+- Works with any EV, not only Tesla
 
 ## Features
 
-- Add, edit and delete charging sessions: date, operator, AC/DC, kWh, price, charging time, ending %, odometer
-- Monthly view with previous / next month navigation
-- Summary cards (energy, money spent, sessions) and an AC/DC energy chart for the selected month
-- Search by operator or date (`02.11` works), filter by AC / DC
-- Price per kWh computed the same way as in the sheet (`ROUND(price / kWh, 2)`)
-- Phone friendly: stacked cards on small screens, large touch targets, accepts both `5,10` and `5.10`
-- kWh and price are rounded to 2 decimals (`23,457` → `23,46`)
-- Operator list with "+ New operator…"; typing `evpoint` reuses the existing `EvPoint` spelling
-- AC/DC is preselected from the last session with the same operator
+- Add, edit and delete sessions: date, operator, AC/DC, kWh, price, charging time, ending %, odometer
+- Monthly view with summary cards (energy, money spent, number of sessions) and an AC/DC chart
+- Search by operator or date and filter by AC / DC
+- Price per kWh is calculated for you
+- Made for the phone: big buttons, and you can type `5,10` or `5.10`
 
-## How it works
+## Try it first (optional)
 
-```
-Phone / desktop browser ──► Apps Script web app (Index.html) ──google.script.run──► Code.gs ──► Google Sheet
-```
+1. Download the project: on GitHub click **Code → Download ZIP** and unzip it.
+2. Double-click `dist/Index.html`. It opens in your browser with sample data.
 
-| File | Purpose |
-|---|---|
-| `src/index.html` | Page structure (HTML) |
-| `src/style.css` | Styles: dark theme, cards, form, table |
-| `src/media.css` | Media queries for tablets and phones |
-| `src/script.js` | Browser logic. Detects whether it runs inside Apps Script (uses the sheet) or locally (uses `localStorage` with sample data). |
-| `build.ps1` | Inlines the CSS and JS into one file, `dist/Index.html` |
-| `dist/Index.html` | **Generated.** The file that goes into Apps Script. Do not edit by hand. |
-| `apps-script/Code.gs` | Server side: reads sessions, inserts new rows sorted by date, edits and deletes rows. |
-| `SETUP.md` | Step-by-step installation guide (in Bulgarian). |
+In this mode the data is kept only in that browser. To save into Google Sheets, follow the setup below.
 
-### Why a build step
+## Setup
 
-Apps Script can only serve HTML files, not separate `.css` / `.js` files. The sources stay split for editing, and `build.ps1` produces a single `dist/Index.html` so deploying still means copying just two files. The phone downloads the same single page either way.
+It takes about 10 minutes and you do it only once. You need a Google account and a computer.
+
+### 1. Prepare the Google Sheet
+
+You can use a sheet you already keep or start a new one at [sheets.google.com](https://sheets.google.com). The app expects this layout:
+
+| | B | C | D | E | F | G | H | I | J |
+|---|---|---|---|---|---|---|---|---|---|
+| **Row 3** | Date | Operator | Energy (kWh) | Price (EUR) | Time (min) | Type | Price per kWh | Odometer | Ending % |
+| **Row 4** | *(empty)* | | | | | | | | |
+| **Row 5+** | sessions, newest on top | | | | | | | | |
+
+- Column A and rows 1–2 can hold anything you like, such as a title.
+- Row 3 holds the headers. You can name them in any language; the app only looks at the column positions.
+- Leave row 4 empty. New sessions are always added at row 5, so totals you build from row 4, such as `=SUM(D4:D200)`, include them automatically.
+- Column G must be `AC` or `DC`. The app reads sessions down to the first row without `AC`/`DC`, so you can keep totals and statistics below the sessions.
+- Column H is filled in by the app with the formula `=ROUND(E/D, 2)`.
+- If you already have sessions, put them from row 5 down, newest first. Dates can be written as `31.10.2026`.
+
+The file must be a real Google Sheet. If you uploaded an Excel file and you see an **.XLSX** label next to its name, use **File → Save as Google Sheets** and continue with the new copy.
+
+### 2. Add the code to the sheet
+
+You need two files from this repository. You don't have to download anything: open each file on GitHub and click the **Copy raw file** button (two squares icon) above the code.
+
+- [`apps-script/Code.gs`](apps-script/Code.gs) reads and writes the sheet
+- [`dist/Index.html`](dist/Index.html) is the app itself
+
+Then:
+
+1. In your Google Sheet open **Extensions → Apps Script**. A new tab opens.
+2. Click **Untitled project** at the top left and rename it to `Tesla Charging Tracker`.
+3. Open the file **Code.gs** on the left, delete everything in it and paste `Code.gs`.
+4. Next to **Files** click **+ → HTML** and name the file exactly `Index` (capital I, no `.html`).
+5. Delete everything in it and paste `Index.html`.
+6. Press **Ctrl+S** (or **Cmd+S** on a Mac) to save.
+
+Make sure each file got the right code. Code.gs starts with `/**`, Index.html starts with `<!DOCTYPE html>`.
+
+### 3. Publish it as a web app
+
+1. At the top right click **Deploy → New deployment**.
+2. Click the gear icon next to **Select type** and choose **Web app**.
+3. Fill in:
+   - Description: `Tesla Charging Tracker`
+   - Execute as: **Me**
+   - Who has access: **Only myself**
+4. Click **Deploy**.
+5. Google asks for permission. Click **Authorize access** and choose your account.
+   - You will see **"Google hasn't verified this app"**. That's expected: you are the author of this script, so nobody else has checked it.
+   - Click **Advanced → Go to Tesla Charging Tracker (unsafe) → Allow**.
+6. Copy the **Web app URL**. It ends with `/exec`. This is your app's link. Keep it private.
+
+### 4. Check that it works
+
+1. Open the link. At the bottom of the page it should say **"Data is saved in your Google Sheet"** and your sessions should be listed.
+2. Add a test session and look at the sheet: it should be on row 5 and the price per kWh should be filled in.
+3. Delete the test session in the app with **Delete**.
+
+If something goes wrong, **File → Version history** in the sheet brings back any earlier state.
+
+### 5. Add it to your phone
+
+Open the link on your phone, signed in to the same Google account, and add it to the home screen:
+
+- **iPhone (Safari):** Share button → **Add to Home Screen**
+- **Android (Chrome):** menu ⋮ → **Add to Home screen**
+
+On the computer you can bookmark the link or create a desktop shortcut to it.
+
+## How to use
+
+- **Add a session:** fill in the form and press **+ Add Session**. The date defaults to today.
+- **Operator:** pick one from the list. For a new one choose **+ New operator…** and type the name. If you type an existing name in different letters, like `evpoint`, the existing spelling (`EvPoint`) is used.
+- **AC / DC:** the app selects the type you used last time with that operator. Change it if needed.
+- **Numbers:** both `23,45` and `23.45` work. kWh and price are rounded to 2 decimals (`23,457` becomes `23,46`).
+- **Edit or delete:** use **Edit** or **Delete** on the session in the list.
+- **Other months:** use the **‹** and **›** arrows at the top.
+- **Search and filter:** search by operator or date (for example `02.11`) and use **All / AC / DC**.
+
+You can still edit the sheet by hand. If you change it while the app is open, reload the app before you edit or delete a session there.
+
+## Customize
+
+- **Operators:** the list in the app is built from the operators already in your sheet plus a default list of Bulgarian operators. To change the defaults, edit `DEFAULT_OPERATORS` at the top of `src/script.js` and rebuild (see [For developers](#for-developers)).
+- **Which tab is used:** `SHEET_ID` at the top of `Code.gs` is the number after `#gid=` in your sheet's address. If it doesn't match any tab, the first tab is used. If your sessions are on another tab, put its number there.
+
+## Updating to a new version
+
+1. Copy the new `Code.gs` and `dist/Index.html` into Apps Script again, the same way as in step 2, and save.
+2. **Deploy → Manage deployments** → pencil icon ✏️ → **Version: New version** → **Deploy**.
+
+The link stays the same, so the phone shortcut keeps working.
+
+## Troubleshooting
+
+- **"Sorry, unable to open the file at this time":** this happens when the browser is signed in to several Google accounts. Open the link in a window that is signed in only to the account that owns the sheet, for example a private window.
+- **"Not saved: The sheet was changed in the meantime…":** the sheet was edited by hand while the app was open. Reload the app and try again.
+- **An error on Deploy that mentions Code.gs:** the HTML was probably pasted into Code.gs. Paste each file into the right place again (step 2).
+- **No sessions are shown:** check that column G of your sessions says `AC` or `DC` and that they start at row 5.
+
+## Known limitations
+
+- Needs internet. Without a connection a session can't be saved, but the form keeps what you typed.
+- Changing the date of a saved session doesn't move its row in the sheet.
+- The app is in English.
+
+## For developers
+
+The code is plain HTML, CSS and JavaScript with no libraries. Edit the files in `src/`, then build:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-`src/index.html` also opens directly in a browser for local development: it links the CSS and JS files normally.
+`build.ps1` puts the CSS and JS into one file, `dist/Index.html`, because Apps Script can only serve HTML files. Don't edit `dist/Index.html` by hand. On macOS or Linux, run it with PowerShell 7 (`pwsh ./build.ps1`).
 
-### Expected sheet layout
+| File | Purpose |
+|---|---|
+| `src/index.html` | Page structure. Opens directly in a browser for local testing. |
+| `src/style.css` | Styles |
+| `src/media.css` | Layout for tablets and phones |
+| `src/script.js` | App logic. Uses the Google Sheet inside Apps Script, otherwise `localStorage` with sample data. |
+| `apps-script/Code.gs` | Reads, adds, edits and deletes rows in the sheet |
+| `dist/Index.html` | Generated by `build.ps1`, the file that goes into Apps Script |
 
-| B | C | D | E | F | G | H | I | J |
-|---|---|---|---|---|---|---|---|---|
-| Date | Operator | Energy (kWh) | Price (EUR) | Time (min) | AC / DC | Price per kWh (formula) | Odometer | Ending % |
+## License
 
-- Row 3 is the header, row 4 is an empty "anchor" row, sessions start at row 5 with the newest on top.
-- Totals below the sessions can use ranges that start at the anchor row, e.g. `=SUM(D4:D117)`. New sessions are inserted at row 5, inside that range, so the totals include them automatically.
-- Reading stops at the first row whose column G is not `AC` or `DC`, so statistics blocks below the data are left alone.
-- `SHEET_ID` in `Code.gs` is the `gid` of the sessions tab (the number after `#gid=` in the sheet URL). If it does not match, the first tab is used.
-
-### Safety
-
-- Deploy with **Execute as: Me** and **Who has access: Only myself**. The link only opens for your own Google account.
-- Edit and delete send the row as the app last saw it. If the sheet changed in the meantime (for example you edited it by hand), the server refuses and asks you to reload instead of writing to the wrong row.
-- Writes are serialized with `LockService`, so saving from the phone and the computer at the same time is safe.
-
-## Setup
-
-See [SETUP.md](SETUP.md). In short: open the sheet → **Extensions → Apps Script** → paste `apps-script/Code.gs` into `Code.gs` and `dist/Index.html` into an HTML file named `Index` → **Deploy → New deployment → Web app**.
-
-After changing the code, run `build.ps1`, paste the files again and use **Deploy → Manage deployments → Edit → New version**. The link stays the same.
-
-## Known limitations
-
-- No offline queue: without internet a session cannot be saved (the form keeps what you typed).
-- Changing the date of an existing session does not move its row in the sheet.
-- The UI is in English.
+[MIT](LICENSE)
