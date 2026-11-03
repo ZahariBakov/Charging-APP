@@ -1,5 +1,5 @@
 /**
- * Tesla Charging Tracker — Google Apps Script backend.
+ * EV Charging Tracker — Google Apps Script backend.
  *
  * Paste this into Extensions → Apps Script of the charging spreadsheet (file "Code.gs"),
  * and paste dist/Index.html into an HTML file named "Index". Deploy as a Web app:
@@ -20,7 +20,7 @@ const DATE_FORMAT = 'dd.mm.yyyy';
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Tesla Charging Tracker')
+    .setTitle('EV Charging Tracker')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 

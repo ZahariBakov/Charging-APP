@@ -1,10 +1,10 @@
-# Tesla Charging Tracker
+# EV Charging Tracker
 
 Log your EV charging sessions from your phone right after charging, or from your computer. Every session is saved straight into your own Google Sheet.
 
 - One private link that works on the phone and on the computer
 - Your data stays in your own Google account. No servers, no subscriptions, nothing to install
-- Works with any EV, not only Tesla
+- Works with any electric car
 
 ![The app on a computer](docs/screenshots/desktop.png)
 
@@ -63,7 +63,7 @@ You need two files from this repository. You don't have to download anything: op
 Then:
 
 1. In your Google Sheet open **Extensions → Apps Script**. A new tab opens.
-2. Click **Untitled project** at the top left and rename it to `Tesla Charging Tracker`.
+2. Click **Untitled project** at the top left and rename it to `EV Charging Tracker`.
 3. Open the file **Code.gs** on the left, delete everything in it and paste `Code.gs`.
 4. Next to **Files** click **+ → HTML** and name the file exactly `Index` (capital I, no `.html`).
 5. Delete everything in it and paste `Index.html`.
@@ -76,13 +76,13 @@ Make sure each file got the right code. Code.gs starts with `/**`, Index.html st
 1. At the top right click **Deploy → New deployment**.
 2. Click the gear icon next to **Select type** and choose **Web app**.
 3. Fill in:
-   - Description: `Tesla Charging Tracker`
+   - Description: `EV Charging Tracker`
    - Execute as: **Me**
    - Who has access: **Only myself**
 4. Click **Deploy**.
 5. Google asks for permission. Click **Authorize access** and choose your account.
    - You will see **"Google hasn't verified this app"**. That's expected: you are the author of this script, so nobody else has checked it.
-   - Click **Advanced → Go to Tesla Charging Tracker (unsafe) → Allow**.
+   - Click **Advanced → Go to EV Charging Tracker (unsafe) → Allow**.
 6. Copy the **Web app URL**. It ends with `/exec`. This is your app's link. Keep it private.
 
 ### 4. Check that it works
