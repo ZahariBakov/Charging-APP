@@ -162,6 +162,7 @@ let sessions = useSheet ? [] : loadSessions();
 let busy = false;
 let editingId = null;
 let editingOriginal = null;   // the session as it was when Edit was pressed, sent to the sheet as a check
+let defaultDate = '';         // the date the form filled in by itself, not one the user picked
 let searchQuery = '';
 let activeFilter = 'All';
 
@@ -291,8 +292,8 @@ function renderTable(monthSessions) {
       <td data-label="End %" class="num">${s.percent === null ? '—' : s.percent + '%'}</td>
       <td data-label="Odometer (km)" class="num">${s.odometer}</td>
       <td class="row-actions">
-        <button data-action="edit" data-id="${s.id}">Edit</button>
-        <button data-action="delete" data-id="${s.id}" class="del">Delete</button>
+        <button data-action="edit" data-id="${s.id}" ${busy ? 'disabled' : ''}>Edit</button>
+        <button data-action="delete" data-id="${s.id}" class="del" ${busy ? 'disabled' : ''}>Delete</button>
       </td>
     </tr>`).join('');
 
@@ -325,14 +326,15 @@ const formFields = ['date', 'kwh', 'price', 'time', 'percent', 'odometer'];
 
 function resetForm() {
   form.reset();
-  $('date').value = toISO(new Date());
+  defaultDate = toISO(new Date());
+  $('date').value = defaultDate;
   renderOperatorOptions();
   setType(lastTypeFor($('operator').value));
 }
 
 function startEdit(id) {
   const s = sessions.find(x => x.id === id);
-  if (!s) return;
+  if (!s || busy) return;
 
   editingId = id;
   editingOriginal = { ...s };
@@ -505,6 +507,46 @@ function shiftMonth(delta) {
 
 $('prev-month').addEventListener('click', () => shiftMonth(-1));
 $('next-month').addEventListener('click', () => shiftMonth(1));
+
+// ---------- Refresh when coming back to the app ----------
+
+// The same fields the sheet compares before it lets an edit through
+const sameSession = (a, b) =>
+  a.date === b.date && a.operator === b.operator && a.kwh === b.kwh && a.odometer === b.odometer;
+
+// Switching back to this tab or unlocking the phone reloads the sheet, so sessions added on
+// another device show up. A form date left at its default also moves on to today.
+async function refresh() {
+  if (busy) return;
+
+  const today = toISO(new Date());
+  if (editingId === null && $('date').value === defaultDate) $('date').value = today;
+  defaultDate = today;
+
+  if (!useSheet) return;
+
+  setBusy(true, $('submit-btn').textContent);
+  try {
+    applySheetResult(await callSheet('getSessions'));
+  } catch (err) {
+    // Offline or Google is slow: keep showing what was loaded before
+  }
+  setBusy(false);
+
+  // A session added above moves every row down; keep editing the same session, not the same row
+  if (editingOriginal) {
+    const same = sessions.find(s => sameSession(s, editingOriginal));
+    if (same) {
+      editingId = same.id;
+      editingOriginal = { ...same };
+    }
+  }
+  render();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refresh();
+});
 
 // ---------- Init ----------
 

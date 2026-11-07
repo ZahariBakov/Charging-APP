@@ -52,9 +52,11 @@ function updateSession(original, input) {
     if (s.date === original.date) {
       writeRow_(sh, original.id, s);
     } else {
-      // A new date belongs elsewhere in the newest-first order, so the row moves there
-      sh.deleteRow(original.id);
-      insertSorted_(sh, s);
+      // A new date belongs elsewhere in the newest-first order, so the row moves there.
+      // The new row is added before the old one is deleted, so a failure in between
+      // leaves a duplicate instead of losing the session.
+      const row = insertSorted_(sh, s);
+      sh.deleteRow(row <= original.id ? original.id + 1 : original.id);
     }
     return readSessions_(sh);
   });
@@ -131,7 +133,8 @@ function readSessions_(sh) {
   return { sessions: sessions, problems: problems };
 }
 
-// Keeps the sheet sorted newest first: inserts above the first session that is not newer
+// Keeps the sheet sorted newest first: inserts above the first session that is not newer.
+// Returns the row number of the new session.
 function insertSorted_(sh, s) {
   const rows = readSessions_(sh).sessions;
   const before = rows.find(r => r.date <= s.date);
@@ -148,6 +151,7 @@ function insertSorted_(sh, s) {
   }
 
   writeRow_(sh, row, s);
+  return row;
 }
 
 function writeRow_(sh, row, s) {
