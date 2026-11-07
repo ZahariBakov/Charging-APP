@@ -67,7 +67,7 @@ function escapeHtml(str) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// ---------- Sample data: all in the current month, only used on first run ----------
+// ---------- Sample data: the current month plus one session before it, only used on first run ----------
 
 function buildSamples() {
   const today = new Date();
@@ -75,11 +75,14 @@ function buildSamples() {
     const d = new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - offset));
     return toISO(d);
   };
+  const lastDayOfPreviousMonth = toISO(new Date(today.getFullYear(), today.getMonth(), 0));
 
   return [
-    { id: 1, date: dayInMonth(9), operator: 'Fines',              type: 'DC', kwh: 44.41, price: 17.32, time: 29,  percent: 77, odometer: 22980 },
-    { id: 2, date: dayInMonth(6), operator: 'EvPoint',            type: 'AC', kwh: 30.18, price: 8.69,  time: 285, percent: 61, odometer: 23410 },
-    { id: 3, date: dayInMonth(3), operator: 'GigaCharger',        type: 'AC', kwh: 26.18, price: 5.24,  time: 660, percent: 61, odometer: 23805 },
+    // The starting point for this month's distance and consumption
+    { id: 0, date: lastDayOfPreviousMonth, operator: 'GigaCharger', type: 'AC', kwh: 28.4, price: 5.68, time: 610, percent: 80, odometer: 23530 },
+    { id: 1, date: dayInMonth(9), operator: 'Fines',              type: 'DC', kwh: 44.41, price: 17.32, time: 29,  percent: 77, odometer: 23680 },
+    { id: 2, date: dayInMonth(6), operator: 'EvPoint',            type: 'AC', kwh: 30.18, price: 8.69,  time: 285, percent: 61, odometer: 23810 },
+    { id: 3, date: dayInMonth(3), operator: 'GigaCharger',        type: 'AC', kwh: 26.18, price: 5.24,  time: 660, percent: 61, odometer: 23960 },
     { id: 4, date: dayInMonth(0), operator: 'Tesla Supercharger', type: 'DC', kwh: 46.99, price: 8.94,  time: 26,  percent: 86, odometer: 24120 }
   ];
 }
@@ -221,9 +224,21 @@ function newestFirst(a, b) {
   return b.date.localeCompare(a.date) || (useSheet ? a.id - b.id : b.id - a.id);
 }
 
+const monthPrefix = () => `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
+
 function sessionsInMonth() {
-  const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
-  return sessions.filter(s => s.date.startsWith(prefix));
+  return sessions.filter(s => s.date.startsWith(monthPrefix()));
+}
+
+// Distance for the selected month, the same way as the monthly tables in the sheet: from the
+// odometer at the last session before this month to the odometer at the last session in it.
+// Null when there is no earlier session to start from (the first month).
+function monthDistance(monthSessions) {
+  const last = [...monthSessions].sort(newestFirst)[0];
+  const before = sessions.filter(s => s.date < monthPrefix() + '01').sort(newestFirst)[0];
+  if (!last || !before || last.odometer <= before.odometer) return null;
+
+  return { start: before.odometer, end: last.odometer, km: last.odometer - before.odometer };
 }
 
 function visibleSessions(monthSessions) {
@@ -246,6 +261,15 @@ function renderStats(monthSessions) {
   $('stat-kwh').textContent = fmtKwh(kwh);
   $('stat-cost').textContent = fmtMoney.format(cost);
   $('stat-count').textContent = monthSessions.length;
+
+  const dist = monthDistance(monthSessions);
+  const per100 = amount => round2(amount / dist.km * 100).toFixed(2);
+  $('stat-km').textContent = dist ? dist.km : '—';
+  $('stat-km-range').textContent = dist
+    ? `${dist.start} → ${dist.end}`
+    : monthSessions.length ? 'Needs a session from an earlier month' : '';
+  $('stat-kwh-100').textContent = dist ? per100(kwh) : '—';
+  $('stat-cost-100').textContent = dist ? '€' + per100(cost) : '—';
 }
 
 // Pie chart drawn as SVG circle segments, so the app needs no internet connection

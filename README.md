@@ -10,6 +10,7 @@ Log your EV charging sessions from your phone right after charging, or from your
 
 <p>
   <img src="docs/screenshots/phone-form.png" alt="Adding a session on a phone" width="260">
+  <img src="docs/screenshots/phone-summary.png" alt="Monthly summary on a phone" width="260">
   <img src="docs/screenshots/phone-list.png" alt="Session list on a phone" width="260">
 </p>
 
@@ -19,6 +20,7 @@ Log your EV charging sessions from your phone right after charging, or from your
 
 - Add, edit and delete sessions: date, operator, AC/DC, kWh, price, charging time, ending %, odometer
 - Monthly view with summary cards (energy, money spent, number of sessions) and an AC/DC chart
+- Distance, consumption (kWh/100 km) and cost per 100 km for each month, worked out from the odometer: from the last session of the previous month to the last session of this one
 - Search by operator or date and filter by AC / DC
 - Price per kWh is calculated for you
 - Made for the phone: big buttons, and you can type `5,10` or `5.10`
