@@ -22,9 +22,13 @@ const WIDTH = 9;              // columns B..J
 const DATE_FORMAT = 'dd.mm.yyyy';
 const TYPES = ['AC', 'DC'];
 
+// The icon in the browser tab. Apps Script needs a link to a PNG, so it comes from GitHub.
+const FAVICON_URL = 'https://raw.githubusercontent.com/ZahariBakov/Charging-APP/main/assets/favicon.png';
+
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('EV Charging Tracker')
+    .setFaviconUrl(FAVICON_URL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
