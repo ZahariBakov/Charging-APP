@@ -3,6 +3,16 @@
 // Kept from the app's old name on purpose: changing it would lose sessions saved in local mode
 const STORAGE_KEY = 'teslaChargingTracker.v2.sessions';
 
+// New sessions saved while there was no connection, waiting to go to the Google Sheet
+const PENDING_KEY = 'evChargingTracker.pending';
+
+// Values that are probably a typo. Saving still works after "Save anyway?".
+const WARN = {
+  maxKmBetween: 1000,    // km driven since the session before
+  maxKwh: 100,           // more than a full battery
+  maxPricePerKwh: 1.00   // € per kWh
+};
+
 const TYPES = {
   AC: { color: 'var(--c-ac)', badge: 'rgba(52, 211, 153, .15)' },
   DC: { color: 'var(--c-dc)', badge: 'rgba(56, 189, 248, .15)' }
@@ -159,9 +169,68 @@ function saveSessions() {
   $('storage-notice').hidden = storageOk;
 }
 
+// ---------- Saving without a connection (Google Sheet mode, new sessions only) ----------
+
+function loadPending() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// If the browser blocks storage, the queue still works while the page stays open
+function savePending() {
+  try {
+    if (pending.length) localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    else localStorage.removeItem(PENDING_KEY);
+  } catch (e) { /* nothing more to do */ }
+  renderPending();
+}
+
+function addPending(entry) {
+  pending.push(entry);
+  savePending();
+  showMessage('');
+}
+
+function renderPending() {
+  const el = $('pending-notice');
+  el.hidden = pending.length === 0;
+  if (pending.length === 0) return;
+
+  const n = pending.length;
+  const list = pending.map(p => `${formatDate(p.date)} — ${p.operator} ${p.type}, ${fmtKwh(p.kwh)} kWh`);
+  el.textContent = `No connection: ${n} session${n === 1 ? ' is' : 's are'} saved on this device and will ` +
+    `be sent to the Google Sheet when the connection is back. Keep this page open. (${list.join('; ')})`;
+}
+
+// google.script.run reports a lost connection as "NetworkError: Connection failure due to HTTP 0"
+const isConnectionError = err => !navigator.onLine || /network|connection|HTTP 0/i.test(err.message);
+
+// Sends the waiting sessions one by one. Call it right after loading the sheet: if the connection
+// dropped after the sheet saved a session but before the answer came back, that session is
+// already there and is not sent twice.
+async function uploadPending() {
+  while (pending.length) {
+    const entry = pending[0];
+    try {
+      if (!sessions.some(s => sameSession(s, entry))) applySheetResult(await callSheet('addSession', entry));
+    } catch (err) {
+      if (isConnectionError(err)) return;   // still offline: it stays saved and is tried again later
+      showMessage(`Could not send the session from ${formatDate(entry.date)} (${entry.operator}, ` +
+        `${fmtKwh(entry.kwh)} kWh): ${err.message} Please add it again.`);
+    }
+    pending.shift();
+    savePending();
+  }
+}
+
 // ---------- State ----------
 
 let sessions = useSheet ? [] : loadSessions();
+let pending = useSheet ? loadPending() : [];
 let busy = false;
 let editingId = null;
 let editingOriginal = null;   // the session as it was when Edit was pressed, sent to the sheet as a check
@@ -258,7 +327,7 @@ function renderStats(monthSessions) {
   const kwh = monthSessions.reduce((sum, s) => sum + s.kwh, 0);
   const cost = monthSessions.reduce((sum, s) => sum + s.price, 0);
 
-  $('stat-kwh').textContent = fmtKwh(kwh);
+  $('stat-kwh').textContent = round2(kwh).toFixed(2);
   $('stat-cost').textContent = fmtMoney.format(cost);
   $('stat-count').textContent = monthSessions.length;
 
@@ -409,6 +478,38 @@ function readForm() {
   };
 }
 
+// Likely typos in the entry, as sentences. An empty list means nothing looks odd.
+function inputWarnings(entry) {
+  const warnings = [];
+  const others = [...sessions.filter(s => s.id !== editingId), ...pending];
+
+  // The session charged right before this one. On the same day, an edited session keeps its
+  // place, so only the ones below it count; a new or moved one goes on top of that day.
+  const keepsPlace = editingOriginal && editingOriginal.date === entry.date;
+  const isBefore = s => s.date < entry.date ||
+    (s.date === entry.date && (!keepsPlace || newestFirst(s, editingOriginal) > 0));
+  const before = others.filter(isBefore).sort(newestFirst)[0];
+
+  if (before && entry.odometer < before.odometer) {
+    warnings.push(`The odometer (${entry.odometer} km) is lower than at the session before ` +
+      `(${before.odometer} km on ${formatDate(before.date)}).`);
+  } else if (before && entry.odometer - before.odometer > WARN.maxKmBetween) {
+    warnings.push(`${entry.odometer - before.odometer} km since the session before ` +
+      `(${before.odometer} km on ${formatDate(before.date)}).`);
+  }
+
+  if (entry.kwh > WARN.maxKwh) warnings.push(`${entry.kwh} kWh is more than ${WARN.maxKwh} kWh.`);
+
+  // No check for a price of 0: some charging is free
+  if (entry.kwh > 0 && entry.price / entry.kwh > WARN.maxPricePerKwh) {
+    warnings.push(`€${pricePerKwh(entry)} per kWh is more than €${WARN.maxPricePerKwh.toFixed(2)}.`);
+  }
+
+  if (entry.date > toISO(new Date())) warnings.push(`The date ${formatDate(entry.date)} is in the future.`);
+
+  return warnings;
+}
+
 // When leaving the field, show the rounded value, keeping the separator that was typed
 ['kwh', 'price'].forEach(id => {
   $(id).addEventListener('change', () => {
@@ -427,7 +528,12 @@ form.addEventListener('submit', async e => {
 
   const entry = readForm();
 
-  if (useSheet) {
+  const warnings = inputWarnings(entry);
+  if (warnings.length && !confirm(`Please check:\n\n• ${warnings.join('\n• ')}\n\nSave anyway?`)) return;
+
+  if (useSheet && editingId === null && !navigator.onLine) {
+    addPending(entry);
+  } else if (useSheet) {
     const label = $('submit-btn').textContent;
     setBusy(true, 'Saving to Google Sheet…');
     try {
@@ -435,12 +541,17 @@ form.addEventListener('submit', async e => {
         ? await callSheet('updateSession', editingOriginal, entry)
         : await callSheet('addSession', entry));
       showMessage('');
+      await uploadPending();   // the connection works now, so send anything still waiting
     } catch (err) {
-      // Keep everything typed in the form so nothing is lost
-      showMessage('Not saved: ' + err.message);
       setBusy(false);
-      $('submit-btn').textContent = label;
-      return;
+      if (editingId === null && isConnectionError(err)) {
+        addPending(entry);
+      } else {
+        // Keep everything typed in the form so nothing is lost
+        showMessage('Not saved: ' + err.message);
+        $('submit-btn').textContent = label;
+        return;
+      }
     }
     setBusy(false);
   } else if (editingId !== null) {
@@ -549,13 +660,16 @@ async function refresh() {
 
   if (!useSheet) return;
 
-  setBusy(true, $('submit-btn').textContent);
+  const label = $('submit-btn').textContent;
+  setBusy(true, pending.length ? 'Sending saved sessions…' : label);
   try {
     applySheetResult(await callSheet('getSessions'));
+    await uploadPending();
   } catch (err) {
     // Offline or Google is slow: keep showing what was loaded before
   }
   setBusy(false);
+  $('submit-btn').textContent = label;
 
   // A session added above moves every row down; keep editing the same session, not the same row
   if (editingOriginal) {
@@ -572,18 +686,23 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refresh();
 });
 
+// Back online: send the sessions saved meanwhile
+window.addEventListener('online', refresh);
+
 // ---------- Init ----------
 
 async function init() {
   if (useSheet) {
     $('data-source').textContent = 'Data is saved in your Google Sheet';
     setBusy(true, 'Loading from Google Sheet…');
+    renderPending();
     render();
     try {
       applySheetResult(await callSheet('getSessions'));
       showMessage('');
+      await uploadPending();   // left over from a visit without a connection
     } catch (err) {
-      showMessage('Could not load the Google Sheet: ' + err.message + ' Reload the page to try again.');
+      showMessage('Could not load the Google Sheet: ' + err.message.replace(/\.?$/, '.') + ' Reload the page to try again.');
     }
     setBusy(false);
     stopEdit();   // puts the form and the "+ Add Session" label back after "Loading…"

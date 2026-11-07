@@ -23,6 +23,8 @@ Log your EV charging sessions from your phone right after charging, or from your
 - Distance, consumption (kWh/100 km) and cost per 100 km for each month, worked out from the odometer: from the last session of the previous month to the last session of this one
 - Search by operator or date and filter by AC / DC
 - Price per kWh is calculated for you
+- Asks "Save anyway?" when a value looks like a typo: the odometer is lower than last time or jumped more than 1000 km, more than 100 kWh, more than €1.00 per kWh, or a date in the future
+- Lost the signal at the charger? A new session is kept on the phone and sent to the sheet when the connection is back
 - Made for the phone: big buttons, and you can type `5,10` or `5.10`
 
 ## Try it first (optional)
@@ -112,6 +114,7 @@ On the computer you can bookmark the link or create a desktop shortcut to it.
 - **AC / DC:** the app selects the type you used last time with that operator. Change it if needed.
 - **Numbers:** both `23,45` and `23.45` work. kWh and price are rounded to 2 decimals (`23,457` becomes `23,46`).
 - **Edit or delete:** use **Edit** or **Delete** on the session in the list.
+- **"Please check… Save anyway?":** the app thinks a value may be a typo. Press **Cancel** to fix it or **OK** to save it as it is. The limits are in `WARN` at the top of `src/script.js`.
 - **Other months:** use the **‹** and **›** arrows at the top.
 - **Search and filter:** search by operator or date (for example `02.11`) and use **All / AC / DC**.
 
@@ -139,7 +142,7 @@ The link stays the same, so the phone shortcut keeps working.
 
 ## Known limitations
 
-- Needs internet. Without a connection a session can't be saved, but the form keeps what you typed.
+- Needs internet to open. If the connection drops while the app is open, new sessions are kept on the device and sent as soon as it's back (when the connection returns or you come back to the app). Edits and deletes need a connection.
 - The app is in English.
 
 ## For developers

@@ -137,6 +137,7 @@ h2 small { color: var(--faint); font-weight: 400; font-size: 13px; }
 
 /* ---------- Messages ---------- */
 .notice {
+  margin: 0;   /* the page grid already spaces them */
   background: rgba(251, 191, 36, .1);
   border: 1px solid rgba(251, 191, 36, .4);
   color: #fcd34d;
