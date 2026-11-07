@@ -520,8 +520,7 @@ async function init() {
       showMessage('Could not load the Google Sheet: ' + err.message + ' Reload the page to try again.');
     }
     setBusy(false);
-    resetForm();
-    render();
+    stopEdit();   // puts the form and the "+ Add Session" label back after "Loading…"
   } else {
     $('data-source').textContent = 'Local mode — data is saved only in this browser';
     resetForm();
